@@ -1,5 +1,7 @@
 # standard library imports
+import os
 import sys
+from itertools import count
 from os import path
 
 # third party
@@ -22,6 +24,9 @@ except:
     from base_lot import Lot
 
 
+_OUTPUT_COUNTER = count()
+
+
 class xTB_lot(Lot):
     def __init__(self, options):
         super(xTB_lot, self).__init__(options)
@@ -41,15 +46,23 @@ class xTB_lot(Lot):
 
         # convert to bohr
         positions = coords * units.ANGSTROM_TO_AU
-        calc = Calculator(get_method(self.xTB_Hamiltonian), self.numbers, positions, charge=self.charge)
+        uhf = max(int(multiplicity) - 1, 0)
+        calc = Calculator(
+            get_method(self.xTB_Hamiltonian),
+            self.numbers,
+            positions,
+            charge=self.charge,
+            uhf=uhf,
+        )
 
         calc.set_accuracy(self.xTB_accuracy)
-        calc.set_electronic_temperature(self.xTB_electronic_temperature)
+        calc.set_electronic_temperature(int(self.xTB_electronic_temperature))
 
         if self.solvent is not None:
             calc.set_solvent(get_solvent(self.solvent))
 
-        calc.set_output('lot_jobs_{}.txt'.format(self.node_id))
+        output_name = f"lot_jobs_{self.node_id}_{os.getpid()}_{next(_OUTPUT_COUNTER)}.txt"
+        calc.set_output(output_name)
         res = calc.singlepoint()  # energy printed is only the electronic part
         calc.release_output()
 

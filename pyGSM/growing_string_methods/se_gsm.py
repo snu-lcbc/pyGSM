@@ -131,6 +131,18 @@ class SE_GSM(MainGSM):
             self.nodes = self.nodes[:self.nR]
             energies = self.energies
 
+            # Short pilot runs can legitimately stop with only the reactant and
+            # one grown node. In that case there is no interior TS candidate,
+            # so TSnode-based logic should not run.
+            if self.nnodes < 3:
+                print(" Number of nodes is ", self.nnodes)
+                print(" Fewer than 3 nodes remain after growth; ending without TS optimization.")
+                self.xyz_writer('grown_string_{:03}.xyz'.format(self.ID), self.geometries, self.energies, self.gradrmss, self.dEs)
+                self.done_growing = True
+                self.end_early = True
+                self.tscontinue = False
+                return
+
             if self.TSnode == self.nR-1:
                 print(" The highest energy node is the last")
                 print(" not continuing with TS optimization.")
@@ -180,7 +192,18 @@ class SE_GSM(MainGSM):
 
         if rtype == 1:
             print(" copying last node, opting")
-            self.nodes[self.nR] = Molecule.copy_from_options(self.nodes[self.nR-1], new_node_id=self.nR)
+            new_node = Molecule.copy_from_options(self.nodes[self.nR-1], new_node_id=self.nR)
+            if self.nR < len(self.nodes):
+                self.nodes[self.nR] = new_node
+            else:
+                # Growth truncates self.nodes to the currently active string.
+                # A later endpoint extension during convergence therefore needs
+                # to append a fresh slot instead of assigning past the end.
+                self.nodes.append(new_node)
+            if self.nR >= len(self.optimizer):
+                self.optimizer.append(self.optimizer[self.nR-1].__class__(self.optimizer[self.nR-1].options.copy()))
+            if self.nR >= len(self.active):
+                self.active.append(False)
             print(" Optimizing node %i" % self.nR)
             self.optimizer[self.nR].conv_grms = self.options['CONV_TOL']
             self.optimizer[self.nR].conv_gmax = self.options['CONV_gmax']
