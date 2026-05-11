@@ -18,6 +18,15 @@ from collections import Counter
 import numpy as np
 
 
+def _scalar(value):
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return float(arr)
+    if arr.size == 1:
+        return float(arr.reshape(-1)[0])
+    raise ValueError("Expected scalar-like value, got shape %s" % (arr.shape,))
+
+
 class SE_GSM(MainGSM):
 
     def __init__(
@@ -247,7 +256,7 @@ class SE_GSM(MainGSM):
                 raise ValueError
             if self.nodes[self.nR] is None:
                 self.add_GSM_nodeR()
-                print(" getting energy for node %d: %5.4f" % (self.nR-1, self.nodes[self.nR-1].energy - self.nodes[0].V0))
+                print(" getting energy for node %d: %5.4f" % (self.nR-1, _scalar(self.nodes[self.nR-1].energy - self.nodes[0].V0)))
         return
 
     def add_GSM_nodes(self, newnodes=1):
@@ -356,7 +365,7 @@ class SE_GSM(MainGSM):
         overlap = np.dot(gradient.T, constraints)
         cgrad = overlap*constraints
 
-        cgrad = np.linalg.norm(cgrad)*np.sign(overlap)
+        cgrad = _scalar(np.linalg.norm(cgrad)*np.sign(overlap))
 
         print((" cgrad: %4.3f nodemax: %i nR: %i" % (cgrad, nodemax, self.nR)))
 

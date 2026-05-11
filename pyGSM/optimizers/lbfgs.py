@@ -18,6 +18,15 @@ from .base_optimizer import base_optimizer
 from utilities import manage_xyz, block_matrix, units
 
 
+def _scalar(value):
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return float(arr)
+    if arr.size == 1:
+        return float(arr.reshape(-1)[0])
+    raise ValueError("Expected scalar-like value, got shape %s" % (arr.shape,))
+
+
 class iterationData:
     """docstring for iterationData"""
 
@@ -49,7 +58,7 @@ class lbfgs(base_optimizer):
     ):
 
         # stash/initialize some useful attributes
-        print(" initial E %5.4f" % (molecule.energy - refE))
+        print(" initial E %5.4f" % _scalar(molecule.energy - refE))
         geoms = []
         energies = []
         geoms.append(molecule.geometry)
@@ -72,7 +81,7 @@ class lbfgs(base_optimizer):
         num_coords = molecule.num_coordinates - nconstraints - molecule.num_frozen_atoms*3
 
         # Evaluate the function value and its gradient.
-        fx = molecule.energy
+        fx = _scalar(molecule.energy)
         g = molecule.gradient.copy()
 
         # project out the constraint
@@ -81,7 +90,7 @@ class lbfgs(base_optimizer):
             gc -= np.dot(gc.T, c[:, np.newaxis])*c[:, np.newaxis]
 
         g_prim = block_matrix.dot(molecule.coord_basis, gc)
-        molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/num_coords)
+        molecule.gradrms = _scalar(np.sqrt(np.dot(gc.T, gc)/num_coords))
 
         # primitive constraint step
         self.cstep_prim = np.zeros_like(g_prim)
@@ -169,24 +178,24 @@ class lbfgs(base_optimizer):
 
             # save new values from linesearch
             molecule = ls['molecule']
-            step = ls['step']
+            step = _scalar(ls['step'])
             x = ls['x']
-            fx = ls['fx']
+            fx = _scalar(ls['fx'])
             g = ls['g']
 
-            dEstep = fx - fxp
+            dEstep = _scalar(fx - fxp)
             dq = x-xp
 
             # TODO dEpre is missing second order effects or is it?
-            dEpre = np.dot(gc.T, dq)*units.KCAL_MOL_PER_AU
-            constraint_energy = np.dot(gp.T, constraint_steps)*units.KCAL_MOL_PER_AU
+            dEpre = _scalar(np.dot(gc.T, dq))*units.KCAL_MOL_PER_AU
+            constraint_energy = _scalar(np.dot(gp.T, constraint_steps))*units.KCAL_MOL_PER_AU
             if opt_type not in ['UNCONSTRAINED', 'ICTAN']:
                 print("constraint_energy: %1.4f" % constraint_energy)
             dEpre += constraint_energy
 
             # if abs(dEpre)<0.05:
             #    dEpre = np.sign(dEpre)*0.05
-            ratio = dEstep/dEpre
+            ratio = _scalar(dEstep/dEpre)
             print(" dEstep=%5.4f" % dEstep)
             print(" dEpre=%5.4f" % dEpre)
             print(" ratio=%5.4f" % ratio)
@@ -218,7 +227,7 @@ class lbfgs(base_optimizer):
                     energies.append(molecule.energy-refE)
                     break
 
-                self.DMAX = ls['step']/2
+                self.DMAX = step/2
                 if self.DMAX < self.DMIN:
                     self.DMAX = self.DMIN
             else:
@@ -252,27 +261,27 @@ class lbfgs(base_optimizer):
                 gc -= np.dot(gc.T, c[:, np.newaxis])*c[:, np.newaxis]
             g_prim = block_matrix.dot(molecule.coord_basis, gc)
 
-            dE = molecule.difference_energy
+            dE = _scalar(molecule.difference_energy)
             if dE < 100.:
                 print(" difference energy is %5.4f" % dE)
-            molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/num_coords)
+            molecule.gradrms = _scalar(np.sqrt(np.dot(gc.T, gc)/num_coords))
 
             # control step size  NEW FEB 2020
             if flag:
                 if ls['status'] == 0:  # passed
                     dgradrms = molecule.gradrms - pgradrms
                     print("dgradrms ", dgradrms)
-                    if ls['step'] > self.DMAX:
-                        if ls['step'] <= self.options['abs_max_step']:     # absolute max
-                            print(" Increasing DMAX to {}".format(ls['step']))
-                            self.DMAX = ls['step']
+                    if step > self.DMAX:
+                        if step <= self.options['abs_max_step']:     # absolute max
+                            print(" Increasing DMAX to {}".format(step))
+                            self.DMAX = step
                         else:
                             self.DMAX = self.options['abs_max_step']
-                    elif ls['step'] < self.DMAX:
-                        if ls['step'] >= self.DMIN:     # absolute min
-                            print(" Decreasing DMAX to {}".format(ls['step']))
-                            self.DMAX = ls['step']
-                        elif ls['step'] <= self.DMIN:
+                    elif step < self.DMAX:
+                        if step >= self.DMIN:     # absolute min
+                            print(" Decreasing DMAX to {}".format(step))
+                            self.DMAX = step
+                        elif step <= self.DMIN:
                             self.DMAX = self.DMIN
                             print(" Decreasing DMAX to {}".format(self.DMIN))
                     elif ratio > 0.85 and ratio < 1.1 and actual_step > self.DMAX and dgradrms < -0.00005:

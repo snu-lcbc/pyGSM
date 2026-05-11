@@ -17,6 +17,15 @@ from copy import copy
 from itertools import chain
 
 
+def _scalar(value):
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return float(arr)
+    if arr.size == 1:
+        return float(arr.reshape(-1)[0])
+    raise ValueError("Expected scalar-like value, got shape %s" % (arr.shape,))
+
+
 def worker(arg):
    obj, methname = arg[:2]
    return getattr(obj, methname)(*arg[2:])
@@ -583,10 +592,11 @@ class GSM(object):
                     # if nbreaks>0:
                     #    ictan[prim_idx] *= 2
                     # => calc bdist <=
+                    diff = _scalar(ictan[prim_idx])
                     if current_d > d0:
-                        bdist += np.dot(ictan[prim_idx], ictan[prim_idx])
+                        bdist += diff * diff
                     if print_level > 0:
-                        print(" bond %s target (less than): %4.3f current d: %4.3f diff: %4.3f " % ((i[1], i[2]), d0, current_d, ictan[prim_idx]))
+                        print(" bond %s target (less than): %4.3f current d: %4.3f diff: %4.3f " % ((i[1], i[2]), d0, current_d, diff))
 
                 elif "BREAK" in i:
                     # order indices to avoid duplicate bonds
@@ -605,11 +615,12 @@ class GSM(object):
                     ictan[prim_idx] = -1*(d0-current_d)
 
                     # => calc bdist <=
+                    diff = _scalar(ictan[prim_idx])
                     if current_d < d0:
-                        bdist += np.dot(ictan[prim_idx], ictan[prim_idx])
+                        bdist += diff * diff
 
                     if print_level > 0:
-                        print(" bond %s target (greater than): %4.3f, current d: %4.3f diff: %4.3f " % ((i[1], i[2]), d0, current_d, ictan[prim_idx]))
+                        print(" bond %s target (greater than): %4.3f, current d: %4.3f diff: %4.3f " % ((i[1], i[2]), d0, current_d, diff))
                 elif "ANGLE" in i:
 
                     if i[1] < i[3]:
@@ -646,7 +657,8 @@ class GSM(object):
                     ictan[prim_idx] = -tor_diff*np.pi/180.
 
                     if tor_diff*np.pi/180. > 0.1 or tor_diff*np.pi/180. < 0.1:
-                        bdist += np.dot(ictan[prim_idx], ictan[prim_idx])
+                        diff = _scalar(ictan[prim_idx])
+                        bdist += diff * diff
                     if print_level > 0:
                         print((" current torv: %4.3f align to %4.3f diff(deg): %4.3f" % (torv*180./np.pi, tort, tor_diff)))
 
@@ -664,7 +676,8 @@ class GSM(object):
                     ictan[prim_idx] = -oop_diff*np.pi/180.
 
                     if oop_diff*np.pi/180. > 0.1 or oop_diff*np.pi/180. < 0.1:
-                        bdist += np.dot(ictan[prim_idx], ictan[prim_idx])
+                        diff = _scalar(ictan[prim_idx])
+                        bdist += diff * diff
                     if print_level > 0:
                         print((" current oopv: %4.3f align to %4.3f diff(deg): %4.3f" % (oopv*180./np.pi, oopt, oop_diff)))
 

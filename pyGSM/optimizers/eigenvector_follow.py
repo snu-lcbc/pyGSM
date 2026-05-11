@@ -17,6 +17,15 @@ from .base_optimizer import base_optimizer
 from utilities import units, block_matrix, manage_xyz
 
 
+def _scalar(value):
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return float(arr)
+    if arr.size == 1:
+        return float(arr.reshape(-1)[0])
+    raise ValueError("Expected scalar-like value, got shape %s" % (arr.shape,))
+
+
 class eigenvector_follow(base_optimizer):
 
     def optimize(
@@ -37,7 +46,7 @@ class eigenvector_follow(base_optimizer):
         self.buf = StringIO()
 
         # print " refE %5.4f" % refE
-        print(" initial E %5.4f" % (molecule.energy - refE))
+        print(" initial E %5.4f" % _scalar(molecule.energy - refE))
         print(" CONV_TOL %1.5f" % self.conv_grms)
         geoms = []
         energies = []
@@ -52,7 +61,7 @@ class eigenvector_follow(base_optimizer):
             molecule.form_Hessian_in_basis()
 
         # Evaluate the function value and its gradient.
-        fx = molecule.energy
+        fx = _scalar(molecule.energy)
         g = molecule.gradient.copy()
         # project out the constraint
         gc = g.copy()
@@ -85,7 +94,7 @@ class eigenvector_follow(base_optimizer):
             self.x_prim = np.zeros((molecule.num_primitives, 1), dtype=float)
             self.g_prim = np.zeros((molecule.num_primitives, 1), dtype=float)
 
-        molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/n)
+        molecule.gradrms = _scalar(np.sqrt(np.dot(gc.T, gc)/n))
         dE = molecule.difference_energy
         update_hess = False
 
@@ -141,9 +150,9 @@ class eigenvector_follow(base_optimizer):
 
             # get values from linesearch
             molecule = ls['molecule']
-            step = ls['step']
+            step = _scalar(ls['step'])
             x = ls['x']
-            fx = ls['fx']
+            fx = _scalar(ls['fx'])
             g = ls['g']
 
             if ls['status'] == -2:
@@ -156,17 +165,17 @@ class eigenvector_follow(base_optimizer):
                 molecule.newHess = 5
                 # return ls['status']
 
-            if ls['step'] > self.DMAX:
-                if ls['step'] <= self.options['abs_max_step']:  # absolute max
-                    print(" Increasing DMAX to {}".format(ls['step']))
-                    self.DMAX = ls['step']
+            if step > self.DMAX:
+                if step <= self.options['abs_max_step']:  # absolute max
+                    print(" Increasing DMAX to {}".format(step))
+                    self.DMAX = step
                 else:
                     self.DMAX = self.options['abs_max_step']
-            elif ls['step'] < self.DMAX:
-                if ls['step'] >= self.DMIN:     # absolute min
-                    print(" Decreasing DMAX to {}".format(ls['step']))
-                    self.DMAX = ls['step']
-                elif ls['step'] <= self.DMIN:
+            elif step < self.DMAX:
+                if step >= self.DMIN:     # absolute min
+                    print(" Decreasing DMAX to {}".format(step))
+                    self.DMAX = step
+                elif step <= self.DMIN:
                     self.DMAX = self.DMIN
                     print(" Decreasing DMAX to {}".format(self.DMIN))
 
@@ -174,9 +183,9 @@ class eigenvector_follow(base_optimizer):
             scaled_dq = dq*step
             dEtemp = np.dot(self.Hessian, scaled_dq)
             dEpre = np.dot(np.transpose(scaled_dq), gc) + 0.5*np.dot(np.transpose(dEtemp), scaled_dq)
-            dEpre *= units.KCAL_MOL_PER_AU
+            dEpre = _scalar(dEpre) * units.KCAL_MOL_PER_AU
             # print(constraint_steps.T)
-            constraint_energy = np.dot(gp.T, constraint_steps)*units.KCAL_MOL_PER_AU
+            constraint_energy = _scalar(np.dot(gp.T, constraint_steps)) * units.KCAL_MOL_PER_AU
             # print("constraint_energy: %1.4f" % constraint_energy)
             dEpre += constraint_energy
             # if abs(dEpre)<0.01:
@@ -188,10 +197,10 @@ class eigenvector_follow(base_optimizer):
                 gc -= np.dot(gc.T, c[:, np.newaxis])*c[:, np.newaxis]
 
             # control step size
-            dEstep = fx - fxp
+            dEstep = _scalar(fx - fxp)
             print(" dEstep=%5.4f" % dEstep)
-            ratio = dEstep/dEpre
-            molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/n)
+            ratio = _scalar(dEstep/dEpre)
+            molecule.gradrms = _scalar(np.sqrt(np.dot(gc.T, gc)/n))
             if ls['status'] != -2:
                 self.step_controller(actual_step, ratio, molecule.gradrms, pgradrms, dEpre, opt_type, dEstep)
 
@@ -222,13 +231,13 @@ class eigenvector_follow(base_optimizer):
             self.buf.write(u' Node: %d Opt step: %d E: %5.4f predE: %5.4f ratio: %1.3f gradrms: %1.5f ss: %1.3f DMAX: %1.3f\n' % (molecule.node_id, ostep+1, fx-refE, dEpre, ratio, molecule.gradrms, step, self.DMAX))
 
             # check for convergence TODO
-            fx = molecule.energy
-            dE = molecule.difference_energy
+            fx = _scalar(molecule.energy)
+            dE = _scalar(molecule.difference_energy)
             if dE < 1000.:
                 print(" difference energy is %5.4f" % dE)
             gmax = float(np.max(np.absolute(gc)))
             disp = float(np.linalg.norm((xyz-xyzp).flatten()))
-            xnorm = np.sqrt(np.dot(x.T, x))
+            xnorm = _scalar(np.sqrt(np.dot(x.T, x)))
             # gnorm = np.sqrt(np.dot(g.T, g))
             if xnorm < 1.0:
                 xnorm = 1.0

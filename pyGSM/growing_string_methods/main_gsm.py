@@ -23,6 +23,16 @@ import multiprocessing as mp
 from itertools import chain
 from copy import deepcopy
 
+
+def _scalar(value):
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return float(arr)
+    if arr.size == 1:
+        return float(arr.reshape(-1)[0])
+    raise ValueError("Expected scalar-like value, got shape %s" % (arr.shape,))
+
+
 def worker(arg):
     obj, methname = arg[:2]
     return getattr(obj, methname)(*arg[2:])
@@ -191,7 +201,7 @@ class MainGSM(GSM):
 
             ts_cgradq = 0.
             if not self.find:
-                ts_cgradq = np.linalg.norm(np.dot(self.nodes[self.TSnode].gradient.T, self.nodes[self.TSnode].constraints[:, 0])*self.nodes[self.TSnode].constraints[:, 0])
+                ts_cgradq = _scalar(np.linalg.norm(np.dot(self.nodes[self.TSnode].gradient.T, self.nodes[self.TSnode].constraints[:, 0])*self.nodes[self.TSnode].constraints[:, 0]))
                 print(" ts_cgradq %5.4f" % ts_cgradq)
 
             ts_gradrms = self.nodes[self.TSnode].gradrms
@@ -801,7 +811,7 @@ class MainGSM(GSM):
 
         tan = block_matrix.dot(block_matrix.transpose(Vecs), tan0)   # (nicd,1
         Ht = np.dot(self.newic.Hessian, tan)                         # (nicd,nicd)(nicd,1) = nicd,1
-        tHt = np.dot(tan.T, Ht)
+        tHt = _scalar(np.dot(tan.T, Ht))
 
         a = abs(q0-qm1)
         b = abs(qp1-q0)
