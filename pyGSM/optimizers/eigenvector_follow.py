@@ -215,6 +215,12 @@ class eigenvector_follow(base_optimizer):
             if not molecule.coord_obj.__class__.__name__ == 'CartesianCoordinates':
                 # only form g_prim for non-constrained
                 self.g_prim = block_matrix.dot(molecule.coord_basis, gc)
+                # self.dx/self.dg feed ONLY the TS-node Bofill update (base_optimizer
+                # update_bofill / update_TS_BFGS). For opt_type=='TS' a line search is
+                # never used (NoLineSearch is forced), so x-xp is exactly the predicted
+                # DLC step and g-gp the DLC gradient change -- i.e. molecularGSM's Bofill
+                # inputs dq0 and gradq-pgradq (bmat.cpp:1472-1475). Keep NoLineSearch for
+                # the TS node, or revisit this equivalence before trusting the update.
                 self.dx = x-xp
                 self.dg = g - gp
 
@@ -259,7 +265,10 @@ class eigenvector_follow(base_optimizer):
                     if abs(gts) < self.conv_grms*5.:
                         self.converged = True
                 elif opt_type == "TS":
-                    if self.gtse < self.conv_grms*5.:
+                    # molecularGSM's exact-TS break (bmat.cpp opt_r, OPTTHRESH == CONV_TOL)
+                    # requires the gradient along the followed reaction eigenmode below
+                    # 1x CONV_TOL, not 5x. Match that tighter criterion.
+                    if self.gtse < self.conv_grms:
                         self.converged = True
                 else:
                     self.converged = True

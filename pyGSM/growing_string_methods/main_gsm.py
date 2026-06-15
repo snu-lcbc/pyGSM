@@ -384,7 +384,10 @@ class MainGSM(GSM):
                     path=path,
                 )
 
-        if self.__class__.__name__ == "SE-GSM" and self.done_growing:
+        # Class name is SE_GSM (underscore); the previous "SE-GSM" string never matched,
+        # so this product-node minimum check was dead code. Re-enabled to match intent
+        # (cf. line 84, where the same author spells the class name correctly).
+        if self.__class__.__name__ == "SE_GSM" and self.done_growing:
             fp = self.find_peaks('opting')
             if self.energies[self.nnodes-1] > self.energies[self.nnodes-2] and fp > 0 and self.nodes[self.nnodes-1].gradrms > self.CONV_TOL:
                 printcool('Last node is not a minimum, Might need to verify that the last node is a minimum')

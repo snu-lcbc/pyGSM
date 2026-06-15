@@ -589,6 +589,11 @@ class GSM(object):
 
                     # TODO don't set tangent if value is too small
                     ictan[prim_idx] = -1*(d0-current_d)
+                    # Match molecularGSM tangent_1b (gstring.cpp:1859-1860): clamp the ADD
+                    # tangent to zero once the forming bond reaches/passes its target
+                    # (current_d <= d0) so it never drives an already-formed bond apart.
+                    if current_d < d0:
+                        ictan[prim_idx] = 0.
                     # if nbreaks>0:
                     #    ictan[prim_idx] *= 2
                     # => calc bdist <=

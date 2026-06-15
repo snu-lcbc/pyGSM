@@ -126,12 +126,16 @@ class SE_GSM(MainGSM):
                     if self.pastts == 1: #normal over the hill
                         self.add_GSM_nodeR(1)
                         self.add_last_node(2)
-                    elif self.pastts == 2 or self.pastts==3: #when cgrad is positive
+                    elif self.pastts == 2 or self.pastts == 3:
+                        # pastts==2 (constraint gradient positive) and pastts==3 (product
+                        # detected by bonding) complete the string identically. molecularGSM
+                        # likewise treats every nonzero past_ts() value the same at the
+                        # growth-termination site (gstring.cpp ~6901, `if (pastts)`), so there
+                        # is no distinct pastts==3 action. (Removed an unreachable
+                        # `elif self.pastts == 3` that this condition always shadowed.)
                         self.add_last_node(1)
                         if self.nodes[self.nR-1].gradrms > 5.*self.options['CONV_TOL']:
                             self.add_last_node(1)
-                    elif self.pastts == 3: #product detected by bonding
-                        self.add_last_node(1)
                 except:
                     print("Failed to add last node, continuing.")
                     # probably need to make sure last node is optimized
