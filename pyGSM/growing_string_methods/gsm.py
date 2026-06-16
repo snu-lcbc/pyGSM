@@ -589,11 +589,12 @@ class GSM(object):
 
                     # TODO don't set tangent if value is too small
                     ictan[prim_idx] = -1*(d0-current_d)
-                    # Match molecularGSM tangent_1b (gstring.cpp:1859-1860): clamp the ADD
-                    # tangent to zero once the forming bond reaches/passes its target
-                    # (current_d <= d0) so it never drives an already-formed bond apart.
-                    if current_d < d0:
-                        ictan[prim_idx] = 0.
+                    # NOTE: do not re-add a `if current_d < d0: ictan[prim_idx] = 0.`
+                    # zero-clamp here. It mirrors molecularGSM tangent_1b but shifts SE-GSM
+                    # node placement so the TS lands on a boundary node, which pyGSM ic_reparam
+                    # rejects ("TS node shouldn't be the first or last node") -- it crashed the
+                    # butadiene+ethylene Diels-Alder SE-GSM. Without it pyGSM finds a clean TS
+                    # that matches molecularGSM (barrier ~6.7 vs 6.4 kcal/mol, same TS node).
                     # if nbreaks>0:
                     #    ictan[prim_idx] *= 2
                     # => calc bdist <=
