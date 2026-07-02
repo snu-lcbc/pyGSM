@@ -1337,10 +1337,21 @@ class PrimitiveInternalCoordinates(InternalCoordinates):
         for elem in prim_idx:
             try:
                 new_hybrid_indices.remove(elem)
-            except:
-                print(elem)
-                print(type(elem))
-                raise RuntimeError
+            except ValueError:
+                # Informative failure (was a bare `raise RuntimeError`). This fires when
+                # the primitive-fragment partition references an atom index that is not in
+                # the remaining hybrid set -- in practice, multi-fragment reactants whose
+                # atoms are NOT numbered as contiguous per-molecule blocks (interleaved
+                # numbering). Renumber the input XYZ so each molecule's atoms are
+                # contiguous (all of molecule A, then all of molecule B, ...).
+                raise RuntimeError(
+                    "get_hybrid_indices: primitive index {!r} (type {}) is not in the "
+                    "hybrid-atom set for a {}-atom system. This usually means the reactant "
+                    "has interleaved multi-fragment atom numbering; renumber the XYZ so each "
+                    "molecule's atoms form a contiguous block.".format(
+                        elem, type(elem).__name__, int(natoms)
+                    )
+                )
         # print('hybrid indices')
         # print(new_hybrid_indices)
 

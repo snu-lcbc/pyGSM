@@ -365,7 +365,10 @@ class base_optimizer(object):
         # 6/5 climb works with block matrix distributed constraints
         # => ictan climb
         if opt_type == "CLIMB":
-            gts = np.dot(g.T, molecule.constraints[:, 0])
+            # NumPy-2 safe: np.dot returns a shape-(1,) array here; coerce to a
+            # Python float so the "%1.4f" % gts format below (and the comparison)
+            # do not raise "only 0-dimensional arrays can be converted to scalars".
+            gts = float(np.asarray(np.dot(g.T, molecule.constraints[:, 0])).reshape(-1)[0])
             # stepsize=np.linalg.norm(constraint_steps)
             max_step = 0.05/self.SCALE_CLIMB
             if gts > np.abs(max_step):
@@ -384,7 +387,8 @@ class base_optimizer(object):
             constraint_steps[:, 0] = dq*molecule.constraints[:, 1]
         # => seam climb
         elif opt_type == 'TS-SEAM':
-            gts = np.dot(g.T, molecule.constraints[:, 0])
+            # NumPy-2 safe scalar coercion (see CLIMB branch above).
+            gts = float(np.asarray(np.dot(g.T, molecule.constraints[:, 0])).reshape(-1)[0])
 
             # climbing step
             max_step = 0.05/self.SCALE_CLIMB
